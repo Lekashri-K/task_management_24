@@ -1,21 +1,28 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { getCurrentUser } from '../utils/auth';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const PrivateRoute = ({ allowedRoles }) => {
-  const user = getCurrentUser();
-  const access_token = localStorage.getItem('access_token');
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-  if (!access_token || !user) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <div>Loading...</div>; // Or your custom loading component
   }
 
-  // Check if user's role is allowed
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />; // Renders nested route like Dashboard
+  const userRole = user.role?.toLowerCase();
+  const isAllowed = allowedRoles.some(role => 
+    role.toLowerCase() === userRole
+  );
+
+  if (!isAllowed) {
+    return <Navigate to="/unauthorized" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default PrivateRoute;
