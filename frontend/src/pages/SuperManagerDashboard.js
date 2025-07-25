@@ -1,19 +1,71 @@
+// SuperManagerDashboard.js
 import './SuperManagerDashboard.css';
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-
+import SuperManagerStats from './SuperManagerStats';
+import QuickActions from './QuickActions';
+import { superManagerApi } from '../api/api';
 
 const SuperManagerDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // Strict role verification
+  // Fetch tasks function
+  const fetchTasks = async () => {
+    setLoadingTasks(true);
+    try {
+      const data = await superManagerApi.getTasks();
+      setTasks(data);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  // Fetch projects function
+  const fetchProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const data = await superManagerApi.getProjects();
+      setProjects(data);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  // Fetch recent users function
+  const fetchRecentUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const data = await superManagerApi.getUsers();
+      setRecentUsers(data.slice(0, 5));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Strict role verification and data loading
   useEffect(() => {
     if (user?.role?.toLowerCase() !== 'supermanager') {
       navigate('/login');
+    } else {
+      fetchTasks();
+      fetchProjects();
+      fetchRecentUsers();
     }
   }, [user, navigate]);
 
@@ -91,65 +143,7 @@ const SuperManagerDashboard = () => {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="row mb-4">
-            <div className="col-md-3">
-              <div className="stat-card p-3 bg-white">
-                <div className="d-flex justify-content-between">
-                  <div>
-                    <h6 className="text-muted mb-2">Total Users</h6>
-                    <h3 className="mb-0">124</h3>
-                    <small className="text-success"><i className="bi bi-arrow-up"></i> 12% from last month</small>
-                  </div>
-                  <div className="icon bg-light-primary text-primary">
-                    <i className="bi bi-people"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div className="stat-card p-3 bg-white">
-                <div className="d-flex justify-content-between">
-                  <div>
-                    <h6 className="text-muted mb-2">Active Projects</h6>
-                    <h3 className="mb-0">18</h3>
-                    <small className="text-success"><i className="bi bi-arrow-up"></i> 3 new this week</small>
-                  </div>
-                  <div className="icon bg-light-success text-success">
-                    <i className="bi bi-kanban"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div className="stat-card p-3 bg-white">
-                <div className="d-flex justify-content-between">
-                  <div>
-                    <h6 className="text-muted mb-2">Pending Tasks</h6>
-                    <h3 className="mb-0">76</h3>
-                    <small className="text-danger"><i className="bi bi-arrow-down"></i> 5% from last week</small>
-                  </div>
-                  <div className="icon bg-light-warning text-warning">
-                    <i className="bi bi-list-task"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div className="stat-card p-3 bg-white">
-                <div className="d-flex justify-content-between">
-                  <div>
-                    <h6 className="text-muted mb-2">Completed</h6>
-                    <h3 className="mb-0">342</h3>
-                    <small className="text-success"><i className="bi bi-arrow-up"></i> 22% from last month</small>
-                  </div>
-                  <div className="icon bg-light-info text-info">
-                    <i className="bi bi-check-circle"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SuperManagerStats />
 
           <div className="row">
             {/* Recent Activity */}
@@ -160,111 +154,82 @@ const SuperManagerDashboard = () => {
                   <Link to="/activity" className="small">View All</Link>
                 </div>
                 <div className="card-body">
-                  <div className="activity-item">
-                    <div className="d-flex justify-content-between">
-                      <strong>New user created</strong>
-                      <span className="activity-time">10 mins ago</span>
+                  {tasks.slice(0, 4).map((task) => (
+                    <div className="activity-item" key={task.id}>
+                      <div className="d-flex justify-content-between">
+                        <strong>{task.title}</strong>
+                        <span className="activity-time">
+                          {new Date(task.created_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="mb-0 text-muted">
+                        Status: {task.status} | Due: {task.due_date}
+                      </p>
                     </div>
-                    <p className="mb-0 text-muted">John Doe (Manager) was added by Admin</p>
-                  </div>
-                  <div className="activity-item">
-                    <div className="d-flex justify-content-between">
-                      <strong>Project updated</strong>
-                      <span className="activity-time">1 hour ago</span>
-                    </div>
-                    <p className="mb-0 text-muted">"Website Redesign" deadline extended</p>
-                  </div>
-                  <div className="activity-item">
-                    <div className="d-flex justify-content-between">
-                      <strong>Task completed</strong>
-                      <span className="activity-time">3 hours ago</span>
-                    </div>
-                    <p className="mb-0 text-muted">"Homepage Layout" marked as done by Sarah</p>
-                  </div>
-                  <div className="activity-item">
-                    <div className="d-flex justify-content-between">
-                      <strong>New project created</strong>
-                      <span className="activity-time">5 hours ago</span>
-                    </div>
-                    <p className="mb-0 text-muted">"Mobile App Development" by Super Manager</p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
 
             {/* Quick Actions & User Table */}
             <div className="col-md-6">
-              <div className="card mb-4">
-                <div className="card-header">
-                  <h6 className="mb-0">Quick Actions</h6>
-                </div>
-                <div className="card-body">
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <button className="btn btn-quick-action w-100 text-start p-3">
-                        <i className="bi bi-plus-circle me-2 text-primary"></i> Add User
-                      </button>
-                    </div>
-                    <div className="col-6">
-                      <button className="btn btn-quick-action w-100 text-start p-3">
-                        <i className="bi bi-kanban me-2 text-success"></i> Create Project
-                      </button>
-                    </div>
-                    <div className="col-6">
-                      <button className="btn btn-quick-action w-100 text-start p-3">
-                        <i className="bi bi-list-task me-2 text-info"></i> New Task
-                      </button>
-                    </div>
-                    <div className="col-6">
-                      <button className="btn btn-quick-action w-100 text-start p-3">
-                        <i className="bi bi-file-earmark-text me-2 text-warning"></i> Generate Report
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <QuickActions 
+                refreshTasks={fetchTasks}
+                refreshProjects={fetchProjects}
+                refreshUsers={fetchRecentUsers}
+              />
 
-              <div className="card">
+              <div className="card mt-4">
                 <div className="card-header d-flex justify-content-between align-items-center">
                   <h6 className="mb-0">Recent Users</h6>
                   <Link to="/users" className="small">View All</Link>
                 </div>
                 <div className="card-body p-0">
-                  <div className="table-responsive">
-                    <table className="table table-hover mb-0">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Role</th>
-                          <th>Status</th>
-                       
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <img src="https://randomuser.me/api/portraits/women/44.jpg" className="user-avatar me-2" alt="User" />
-                              <span>Sarah Johnson</span>
-                            </div>
-                          </td>
-                          <td><span className="badge bg-primary">Employee</span></td>
-                          <td><span className="badge bg-success">Active</span></td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <img src="https://randomuser.me/api/portraits/men/32.jpg" className="user-avatar me-2" alt="User" />
-                              <span>Michael Chen</span>
-                            </div>
-                          </td>
-                          <td><span className="badge bg-warning text-dark">Manager</span></td>
-                          <td><span className="badge bg-success">Active</span></td>
-                         
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  {loadingUsers ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover mb-0">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recentUsers.map((user) => (
+                            <tr key={user.id}>
+                              <td>
+                                <div className="d-flex align-items-center">
+                                  <img 
+                                    src={`https://randomuser.me/api/portraits/${user.gender === 'female' ? 'women' : 'men'}/${user.id % 100}.jpg`}
+                                    className="user-avatar me-2" 
+                                    alt="User" 
+                                  />
+                                  <span>{user.name}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`badge ${
+                                  user.role === 'manager' ? 'bg-warning text-dark' : 'bg-primary'
+                                }`}>
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge bg-success">Active</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

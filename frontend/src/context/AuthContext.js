@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/api';
 
 const AuthContext = createContext();
 
@@ -8,17 +9,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Check for existing user on initial load
+  // Check for existing token on initial load
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const accessToken = localStorage.getItem('access_token');
+        if (accessToken) {
+          // Verify token and get user data
+          const response = await api.get('user/');
+          setUser(response.data);
         }
       } catch (error) {
-        console.error('Failed to parse user data:', error);
-        localStorage.removeItem('user');
+        console.error('Auth initialization error:', error);
+        logout();
       } finally {
         setLoading(false);
       }
@@ -30,21 +33,23 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     setLoading(true);
     try {
-      // Mock authentication - replace with actual API call
-      let role = 'employee';
-      if (username.includes('super')) role = 'supermanager';
-      if (username.includes('manager')) role = 'manager';
+      const response = await api.post('login/', {
+        username,
+        password
+      });
 
-      const mockUser = {
-        id: Date.now(),
-        name: username,
-        email: `${username}@example.com`,
-        role: role
-      };
-
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return mockUser;
+      // Store tokens
+      localStorage.setItem('access_token', response.data.access);
+      localStorage.setItem('refresh_token', response.data.refresh);
+      
+      // Get user details
+      const userResponse = await api.get('user/');
+      setUser(userResponse.data);
+      
+      return userResponse.data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -52,7 +57,8 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     navigate('/login');
   };
 

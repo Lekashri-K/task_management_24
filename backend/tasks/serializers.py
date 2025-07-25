@@ -41,11 +41,22 @@ class LoginSerializer(serializers.Serializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id', 'name', 'description', 'created_by', 'assigned_to', 'created_at']
+        fields = ['id', 'name', 'description', 'created_by', 'assigned_to', 'created_at', 'deadline']
         read_only_fields = ['created_by', 'created_at']
+
+    def validate(self, data):
+        if not data.get('name'):
+            raise serializers.ValidationError("Project name is required")
+        if len(data.get('name', '')) < 3:
+            raise serializers.ValidationError("Project name must be at least 3 characters")
+        return data
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'project', 'assigned_by', 'assigned_to', 'status', 'created_at']
-        read_only_fields = ['assigned_by', 'created_at']
+        fields = '__all__'
+        read_only_fields = ('assigned_by', 'created_at')
+
+    def validate(self, data):
+        # Add any custom validation you need
+        return data

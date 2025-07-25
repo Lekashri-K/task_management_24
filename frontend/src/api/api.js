@@ -41,6 +41,15 @@ const authApi = {
 
 // Super Manager API
 const superManagerApi = {
+  getDashboardStats: async () => {
+    try {
+      const response = await api.get('supermanager-dashboard-stats/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+      throw error;
+    }
+  },
   getUsers: async () => {
     try {
       const response = await api.get('supermanager/users/');
